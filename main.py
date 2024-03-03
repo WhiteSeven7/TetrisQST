@@ -39,6 +39,8 @@ class Button:
 
         self.border_rect = self.rect.inflate(50, 20)
 
+        # pygame.event.post(self.event)
+
 
     def click(self, pos: tuple[int, int]) -> bool:
         if self.rect.collidepoint(pos):
@@ -178,14 +180,14 @@ class Game(Windows):
 
     def update(self):        
         self.surface.fill("#334d5c")
-        self.set_mode()
         if self.state == 'game':
             self.block_sys.update(self.qst)
         elif self.state == 'menu':
             self.menu.update()
         else:
             self.result.update(self.qst)
-    
+
+        self.set_mode()
         return super().update()
 
 
