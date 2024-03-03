@@ -58,7 +58,7 @@ class Result:
     def __init__(self) -> None:
         # 每一张问卷的
         self.qst_list = [
-            pygame.transform.scale(pygame.image.load(f"res/QTS/{i}.jpg"), SIZE) for i in range(1, 4)
+            pygame.transform.scale(pygame.image.load(f"res/QTS/{i}.jpg"), (SIZE[1] * 0.64, SIZE[1])) for i in range(1, 4)
         ]
         self.rect_list = [
             img.get_rect(center=(SIZE[0] / 2, SIZE[1] / 2))
@@ -337,9 +337,9 @@ class BlockSys:
             pygame.time.set_timer(
                 pygame.event.Event(
                     GAMESHIFT, 
-                    {"state": "result" ,"qst": qts, "get_score": self.get_score_img}
+                    {"state": "result" ,"qst": qts, "get_score_img": self.get_score_img}
                 ),
-                5 * 60 * 1, 1 
+                5 * 60 * 1000, 1 
             )
         # 设置速度
         if qts == 0:
@@ -359,6 +359,9 @@ class BlockSys:
         self.score = 0
         self.next_block = random.randint(0, 6)
         self.reset()
+        
+        
+        self.score = 300
 
     
     def shift_clicked(self):
@@ -402,7 +405,7 @@ class BlockSys:
 
 
     def get_score_img(self):
-        return self.score
+        return self.score_img
 
 
 # 基础game组件
@@ -454,8 +457,11 @@ class Game(Windows):
                 self.result.start_result(event.qst, event.get_score_img())
 
 
-    def update(self):        
-        self.surface.fill("#334d5c")
+    def update(self):
+        if self.state == 'result':
+            self.surface.fill("#2D4CFF")
+        else: 
+            self.surface.fill("#334d5c")
         if self.state == 'game':
             self.block_sys.update()
         elif self.state == 'menu':
