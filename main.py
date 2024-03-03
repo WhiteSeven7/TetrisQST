@@ -2,10 +2,12 @@ import pygame
 import sys
 import random
 from typing import Literal
+from pygame import Vector2
 
 
 State = Literal['game', 'menu', 'result']
 Qst = Literal[0, 1, 2, 3]
+ClickedType = Literal['I', 'L', 'J', 'K', 'Z', 'O', 'T',]
 
 
 # 位置
@@ -73,9 +75,10 @@ class Result:
             (SIZE[0] / 2, SIZE[1] / 2),
             pygame.event.Event(GAMESHIFT, {"state": "menu", "qst": 0})
         )
+        self.qts = 0
 
     
-    def update(self, qst: Qst):
+    def update(self):
         # 控制
         for event in pygame.event.get(pygame.MOUSEBUTTONDOWN):
             if event.button != 1:
@@ -83,8 +86,12 @@ class Result:
             self.back_button.click(event.pos)
         # 绘制
         surf = pygame.display.get_surface()
-        surf.blit(self.qst_list[qst - 1], self.rect_list[qst - 1])
+        surf.blit(self.qst_list[self.qst - 1], self.rect_list[self.qst - 1])
         self.back_button.draw()
+
+
+    def start_result(self, qts: Qst):
+        self.qst = qts
         
 
 class Menu:
@@ -123,21 +130,61 @@ class Menu:
 
 
 class Block:
-    ...
+    def __init__(self, image) -> None:
+        self.image = image
 
 
 class BlockSys:
     ROW = 23
     COLUMN = 10
+    # MODE = {
+    #     'I': [Vector2()],
+    #     'L': [Vector2()],
+    #     'J': [Vector2()],
+    #     '\\': [Vector2()],
+    #     'Z': [Vector2()],
+    #     'O': [Vector2()],
+    #     'T': [Vector2()]
+    # }
+    BS = 30
+
 
     def __init__(self) -> None:
-        self.map: dict[tuple[int, int], Block] = {}
+        self.map: list[list[Block | None]] = []
         self.clicked: dict[Block, pygame.Vector2] = []
-    
+        # 下落冷却时间
+        self.down_cool = 100
+        # 所有图像
+        self.images = [
+            pygame.transform.scale(pygame.image.load("res/img/blue.png").convert_alpha(), (self.BS, self.BS)),
+            pygame.transform.scale(pygame.image.load("res/img/green.png").convert_alpha(), (self.BS, self.BS)),
+            pygame.transform.scale(pygame.image.load("res/img/indigo.png").convert_alpha(), (self.BS, self.BS)),
+            pygame.transform.scale(pygame.image.load("res/img/orange.png").convert_alpha(), (self.BS, self.BS)),
+            pygame.transform.scale(pygame.image.load("res/img/pink.png").convert_alpha(), (self.BS, self.BS)),
+            pygame.transform.scale(pygame.image.load("res/img/red.png").convert_alpha(), (self.BS, self.BS)),
+            pygame.transform.scale(pygame.image.load("res/img/yellow.png").convert_alpha(), (self.BS, self.BS)),
+        ]
+        self.qts = 0
+        # 核心位置,用于旋转
+        self.clicked_type: ClickedType = 'I'
+        center_x = self.COLUMN // 2
+        # 生成
+        self.create_block = [
+            lambda: [Vector2(center_x - 1, 0), Vector2(center_x, 0), Vector2(center_x + 1, 0), Vector2(center_x + 1, 0)],
+            lambda: [Vector2(center_x, 0), Vector2(center_x, 1), Vector2(center_x + 1, 0), Vector2(center_x + 1, 1)],
+            lambda: [Vector2(center_x - 1, 0), Vector2(center_x, 0), Vector2(center_x + 1, 0), Vector2(center_x, 1)],
+            lambda: [Vector2(center_x - 1, 0), Vector2(center_x, 0), Vector2(center_x + 1, 0), Vector2(center_x - 1, 1)],
+            lambda: [Vector2(center_x - 1, 0), Vector2(center_x, 0), Vector2(center_x + 1, 0), Vector2(center_x + 1, 1)],
+            lambda: [Vector2(center_x - 1, 0), Vector2(center_x, 0), Vector2(center_x, 1), Vector2(center_x + 1, 1)],
+            lambda: [Vector2(center_x - 1, 1), Vector2(center_x, 1), Vector2(center_x, 0), Vector2(center_x + 1, 0)],
+        ]
 
-    def update(self, qst: Qst):
-        self.contorl()
+    
+    def update(self):
+        # self.contorl()
         self.down()
+
+        self.draw()
 
 
     def contorl(self):
@@ -147,7 +194,7 @@ class BlockSys:
             elif event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                 self.move(pygame.Vector2(1, 0))
             elif event.key in (pygame.K_SPACE, pygame.K_w, pygame.K_UP):
-                ...
+                self.shift_clicked()
 
     
     def down(self):
@@ -155,33 +202,46 @@ class BlockSys:
             return
         # 检测能不能下落
         for vect in self.clicked.values():
-            if tuple(vect + pygame.Vector2(0, 1)) in self.map or vect.y >= self.ROW:
+            if vect.y + 1 >= self.ROW or self.map[int(vect.y + 1)][int(vect.x)]:
+                # 不能下落要开始放
                 self.put()
                 return
         # 下落
         for block in self.clicked:
             self.clicked[block].y += 1
-        pygame.time.set_timer(BLOCK_DOWN, 1000, 1)
+        pygame.time.set_timer(BLOCK_DOWN, self.down_cool, 1)
 
 
     def put(self):
         """把手上的砖放在map上"""
         for block, vect in self.clicked.items():
-            self.map[tuple(vect)] = block
+            self.map[int(vect.y)][int(vect.x)] = block
         self.clicked.clear()
+        # 检测清除
         if dead_row := self.ckeck_full():
             self.kill_row(dead_row)
+        # 添加新的方块
+        self.add_clicked()
 
     
     def draw(self):
-        ...
+        # map
+        surf = pygame.display.get_surface()
+        for row, blocks in enumerate(self.map):
+            for column, block in enumerate(blocks):
+                if block:
+                    surf.blit(block.image, (column * self.BS, row * self.BS))
+        # clicked
+        for block, vect in self.clicked.items():
+            surf.blit(block.image, vect * self.BS)
+        
 
 
     def ckeck_full(self) -> list[int]:
         dead_row = []
         for row in range(self.ROW - 1, -1, -1):
-            for column in random(self.COLUMN):
-                if (column, row) not in self.map:
+            for column in range(self.COLUMN):
+                if self.map[row][column] is None :
                     break
             else:
                 dead_row.append(row)
@@ -192,7 +252,8 @@ class BlockSys:
         # 检测能不能移动
         for vector in self.clicked.values():
             new_vect = vector + vect
-            if tuple(new_vect) in self.map or new_vect.x < 0 or new_vect.x >= self.COLUMN:
+            if (new_vect.x < 0 or new_vect.x >= self.COLUMN  
+                or self.map[int(new_vect.y)][int(new_vect.x)]):
                 return
         # 移动
         for vector in self.clicked.values():
@@ -200,7 +261,41 @@ class BlockSys:
 
 
     def kill_row(self, dead_row: list[int]):
+        # 除旧
+        for index in dead_row:
+            self.map.pop(index)
+        # 添新
+        self.map.extend([None] * self.COLUMN for _ in range(len(dead_row)))
+
+
+    def add_clicked(self):
+        t = random.randint(0, 6)
+        self.clicked = {
+            Block(self.images[t]): vect
+            for vect in self.create_block[t]()
+        }
+        # 一段时间后下落
+        pygame.time.set_timer(BLOCK_DOWN, self.down_cool, 1)
+
+
+    def reset(self):
         ...
+
+
+    def start_game(self, qts: Qst):
+        self.qts = qts
+        self.map = [[None] * self.COLUMN for _ in range(self.ROW)]
+        self.add_clicked()
+
+    
+    def shift_clicked(self):
+        x_lock = self.COLUMN
+        y_lock = self.ROW
+        for vect in self.clicked.values():
+            x_lock = min(x_lock, vect.x)
+            y_lock = min(y_lock, vect.y)
+        for vect in self.clicked.values():
+            vect.update(x_lock -(vect.y - y_lock),y_lock + (vect.x - x_lock))
 
 
 # 基础game组件
@@ -246,17 +341,22 @@ class Game(Windows):
     def set_mode(self):
         if events := pygame.event.get(GAMESHIFT):
             self.state = events[-1].state
-            self.qst = events[-1].qst
+            if self.state == 'game':
+                self.block_sys.start_game(events[-1].qst)
+            elif self.state == 'result':
+                ...
+                # self.r
+            # self.qst = events[-1].qst
 
 
     def update(self):        
         self.surface.fill("#334d5c")
         if self.state == 'game':
-            self.block_sys.update(self.qst)
+            self.block_sys.update()
         elif self.state == 'menu':
             self.menu.update()
         else:
-            self.result.update(self.qst)
+            self.result.update()
 
         self.set_mode()
         return super().update()
