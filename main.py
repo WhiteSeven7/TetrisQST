@@ -72,6 +72,8 @@ class Result:
         )
         self.img = None
         self.rect = None
+        self.score_img = None
+        self.score_rect = None
 
     
     def update(self):
@@ -84,11 +86,17 @@ class Result:
         surf = pygame.display.get_surface()
         surf.blit(self.img, self.rect)
         self.back_button.draw()
+        # 显示得分
+        surf.blit(self.score_img, self.score_rect)
 
 
-    def start_result(self, qts: Qst, score):
+    def start_result(self, qts: Qst, score_img: pygame.Surface):
         self.img = self.qst_list[qts - 1]
         self.rect = self.rect_list[qts - 1]
+        self.score_img = score_img
+        self.score_rect = score_img.get_rect(
+            midbottom=(self.back_button.border_rect.centerx, self.back_button.border_rect.top - 30)
+        )
         
 
 class Menu:
@@ -185,6 +193,8 @@ class BlockSys:
         self.next_block = None  
         self.text_img = self.font.render("下一个: ", True, "#DDDDDD")
         self.text_rect = self.text_img.get_rect(midleft=(GAME_WIDTH, SIZE[1] / 5))
+        # 给result用的
+        self.score_img = None
 
     
     def update(self):
@@ -246,9 +256,9 @@ class BlockSys:
         for block, vect in self.clicked.items():
             surf.blit(block.image, vect * self.BS + pygame.Vector2(self.MARGIN_X + self.BORDER, self.MARGIN_Y + self.BORDER))
         # 分数
-        score_img = self.font.render(f'得分: {self.score}', True, "#DDDDDD")
-        score_rect = score_img.get_rect(midleft=(GAME_WIDTH, SIZE[1] * 3 / 4))
-        surf.blit(score_img, score_rect)
+        self.score_img = self.font.render(f'得分: {self.score}', True, "#DDDDDD")
+        score_rect = self.score_img.get_rect(midleft=(GAME_WIDTH, SIZE[1] * 3 / 4))
+        surf.blit(self.score_img, score_rect)
         # 下一个
         n_img = self.images[self.next_block]
         top_left = pygame.Vector2(
@@ -327,7 +337,7 @@ class BlockSys:
             pygame.time.set_timer(
                 pygame.event.Event(
                     GAMESHIFT, 
-                    {"state": "result" ,"qst": qts, "get_score": self.get_score}
+                    {"state": "result" ,"qst": qts, "get_score": self.get_score_img}
                 ),
                 5 * 60 * 1, 1 
             )
@@ -391,7 +401,7 @@ class BlockSys:
         self.lock_row = 0
 
 
-    def get_score(self):
+    def get_score_img(self):
         return self.score
 
 
@@ -441,7 +451,7 @@ class Game(Windows):
             if self.state == 'game':
                 self.block_sys.start_game(event.qst)
             elif self.state == 'result':
-                self.result.start_result(event.qst, event.get_score())
+                self.result.start_result(event.qst, event.get_score_img())
 
 
     def update(self):        
