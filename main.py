@@ -71,7 +71,8 @@ class Result:
             (SIZE[0] / 2, SIZE[1] / 2),
             pygame.event.Event(GAMESHIFT, {"state": "menu", "qst": 0})
         )
-        self.qts = 0
+        self.img = None
+        self.rect = None
 
     
     def update(self):
@@ -82,12 +83,13 @@ class Result:
             self.back_button.click(event.pos)
         # 绘制
         surf = pygame.display.get_surface()
-        surf.blit(self.qst_list[self.qst - 1], self.rect_list[self.qst - 1])
+        surf.blit(self.img, self.rect)
         self.back_button.draw()
 
 
     def start_result(self, qts: Qst):
-        self.qst = qts
+        self.img = self.qst_list[qts - 1]
+        self.rect = self.rect_list[qts - 1]
         
 
 class Menu:
@@ -154,7 +156,6 @@ class BlockSys:
             pygame.transform.scale(pygame.image.load("res/img/red.png").convert_alpha(), (self.BS, self.BS)),
             pygame.transform.scale(pygame.image.load("res/img/yellow.png").convert_alpha(), (self.BS, self.BS)),
         ]
-        self.qts = 0
         # 核心位置,用于旋转
         self.clicked_type: ClickedType = 'I'
         center_x = self.COLUMN // 2
@@ -176,14 +177,17 @@ class BlockSys:
         )
         self.sound = pygame.mixer.Sound(r'res\sound\getScore.wav')
         self.sound.set_volume(0.5)
+        # 变速装置
+        self.changeable_speed = False
+        self.reset_lock()
 
     
     def update(self):
         self.contorl()
         self.down()
-
         self.draw()
-
+        if self.changeable_speed:
+            self.change_speed()
 
     def contorl(self):
         for event in pygame.event.get(pygame.KEYDOWN):
@@ -212,6 +216,7 @@ class BlockSys:
 
     def put(self):
         """把手上的砖放在map上"""
+        self.lock_block += 1
         for block, vect in self.clicked.items():
             self.map[int(vect.y)][int(vect.x)] = block
         self.clicked.clear()
@@ -262,6 +267,7 @@ class BlockSys:
 
 
     def kill_row(self, dead_row: list[int]):
+        self.lock_row += len(dead_row)
         # 除旧
         for index in dead_row:
             self.map.pop(index)
@@ -291,7 +297,7 @@ class BlockSys:
 
 
     def start_game(self, qts: Qst):
-        self.qts = qts
+        # 设置结局
         if qts == 0:
             pygame.time.set_timer(
                 pygame.event.Event(GAMESHIFT, {"state": "menu" ,"qst": qts}),
@@ -302,6 +308,21 @@ class BlockSys:
                 pygame.event.Event(GAMESHIFT, {"state": "result" ,"qst": qts}),
                 5 * 60 * 1000, 1 
             )
+        # 设置速度
+        if qts == 0:
+            self.down_cool = 600
+        elif qts == 1:
+            self.down_cool = 1000
+        elif qts == 2:
+            self.down_cool = 500
+        else:
+            self.down_cool = 100
+        # 设置变速
+        if qts == 2:
+            self.changeable_speed = True
+            self.reset_lock()
+        else:
+            self.changeable_speed = False
         self.reset()
 
     
@@ -326,16 +347,33 @@ class BlockSys:
         self.clicked = new_click
 
 
+    def change_speed(self):
+        if self.lock_block >= 30:
+            if self.lock_row > 4:
+                self.down_cool -= 100
+                self.reset_lock()
+            elif self.lock_row < 4:
+                self.down_cool += 400
+                self.reset_lock()
+        elif self.lock_row == 4:
+            if self.lock_block < 30:
+                self.down_cool -= 400
+                self.reset_lock()
+
+
+    def reset_lock(self):
+        self.lock_block = 0
+        self.lock_row = 0
+
+
 # 基础game组件
 class Windows:
     def __init__(self) -> None:
         pygame.init()
         pygame.font.init()
         self.surface = pygame.display.set_mode(SIZE)
-        pygame.display.set_caption("俄罗斯方块")
         self.clock = pygame.time.Clock()
 
-        Button.font = pygame.font.Font(r'res\font\SmileySans-Oblique-3.otf', 40)
 
 
     def update(self):
@@ -357,9 +395,11 @@ class Windows:
 class Game(Windows):
     def __init__(self) -> None:
         super().__init__()
+        Button.font = pygame.font.Font('res/font/SmileySans-Oblique-3.otf', 40)
+        pygame.display.set_caption("俄罗斯方块")
+        pygame.display.set_icon(pygame.image.load('res/img/icon.png'))
         # 程序模式
         self.state: State = 'menu'
-        self.qst: Qst = 0
         # 3个功能
         self.result = Result()
         self.block_sys = BlockSys()

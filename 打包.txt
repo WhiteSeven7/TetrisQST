@@ -1,0 +1,1 @@
+pyinstaller -D -w --name=俄罗斯方块  --icon=TetrisQST.ico main.py
