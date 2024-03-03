@@ -40,9 +40,11 @@ class Button:
         self.border_rect = self.rect.inflate(50, 20)
 
 
-    def click(self, pos: tuple[int, int]):
+    def click(self, pos: tuple[int, int]) -> bool:
         if self.rect.collidepoint(pos):
             pygame.event.post(self.event)
+            return True
+        return False
 
 
     def draw(self):
@@ -72,6 +74,7 @@ class Result:
     def update(self, qst: Qst):
         # 控制
         for event in pygame.event.get(pygame.MOUSEBUTTONDOWN):
+            if event.button != 1:
                 continue
             self.back_button.click(event.pos)
         # 绘制
@@ -105,8 +108,11 @@ class Menu:
     def update(self):
         # 事件处理
         for event in pygame.event.get(pygame.MOUSEBUTTONDOWN):
+            if event.button != 1:
+                continue
             for button in self.buttons:
-                button.click(event.pos)
+                if button.click(event.pos):
+                    break
         # 绘制
         for button in self.buttons:
             button.draw()
@@ -132,7 +138,6 @@ class Windows:
         self.surface = pygame.display.set_mode(SIZE)
         pygame.display.set_caption("卡牌匹配")
         self.clock = pygame.time.Clock()
-        self.quit = False
 
         Button.font = pygame.font.Font(r'res\font\SmileySans-Oblique-3.otf', 40)
 
@@ -150,12 +155,6 @@ class Windows:
             pygame.event.clear()
             pygame.display.flip()
             self.clock.tick(60)
-        self.safe_quit()
-
-
-    def safe_quit(self):
-        pygame.quit()
-        sys.exit()
 
 
 # 游戏
