@@ -22,7 +22,6 @@ class UserEvent:
 
 # 游戏切换事件
 GAMESHIFT = UserEvent()
-QSTSET = UserEvent()
 # 游戏内部事件
 BLOCK_DOWN =  UserEvent()
 NEED_NEXT =  UserEvent()
@@ -73,6 +72,7 @@ class Result:
     def update(self, qst: Qst):
         # 控制
         for event in pygame.event.get(pygame.MOUSEBUTTONDOWN):
+                continue
             self.back_button.click(event.pos)
         # 绘制
         surf = pygame.display.get_surface()
@@ -142,9 +142,10 @@ class Windows:
 
 
     def run(self):
-        while not self.quit:
+        while True:
             if pygame.event.get(pygame.QUIT):
-                self.quit = True
+                pygame.quit()
+                sys.exit()
             self.update()
             pygame.event.clear()
             pygame.display.flip()
@@ -173,7 +174,6 @@ class Game(Windows):
     def set_mode(self):
         if events := pygame.event.get(GAMESHIFT):
             self.state = events[-1].state
-        if events := pygame.event.get(QSTSET):
             self.qst = events[-1].qst
 
 
