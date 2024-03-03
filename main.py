@@ -7,12 +7,11 @@ from pygame import Vector2
 
 State = Literal['game', 'menu', 'result']
 Qst = Literal[0, 1, 2, 3]
-ClickedType = Literal['I', 'L', 'J', 'K', 'Z', 'O', 'T',]
 
 
 # 位置
-SIZE = 500, 800
-
+SIZE = 350, 500
+GAME_WIDTH = 250
 
 class UserEvent:
     order = pygame.USEREVENT
@@ -69,7 +68,7 @@ class Result:
         self.back_button = Button(
             "点我返回",
             (SIZE[0] / 2, SIZE[1] / 2),
-            pygame.event.Event(GAMESHIFT, {"state": "menu", "qst": 0})
+            pygame.event.Event(GAMESHIFT, {"state": "menu"})
         )
         self.img = None
         self.rect = None
@@ -87,7 +86,7 @@ class Result:
         self.back_button.draw()
 
 
-    def start_result(self, qts: Qst):
+    def start_result(self, qts: Qst, score):
         self.img = self.qst_list[qts - 1]
         self.rect = self.rect_list[qts - 1]
         
@@ -133,11 +132,11 @@ class Block:
 
 
 class BlockSys:
-    ROW = 23
-    COLUMN = 14
-    BS = 32
-    BORDER = 5
-    MARGIN_X = (SIZE[0] - COLUMN * BS) // 2 - BORDER
+    ROW = 20
+    COLUMN = 10
+    BS = 22
+    BORDER = 2
+    MARGIN_X = (GAME_WIDTH - COLUMN * BS) // 2 - BORDER
     MARGIN_Y = (SIZE[1] - ROW * BS) // 2 - BORDER
 
 
@@ -157,7 +156,6 @@ class BlockSys:
             pygame.transform.scale(pygame.image.load("res/img/yellow.png").convert_alpha(), (self.BS, self.BS)),
         ]
         # 核心位置,用于旋转
-        self.clicked_type: ClickedType = 'I'
         center_x = self.COLUMN // 2
         # 生成
         self.create_block = [
@@ -180,6 +178,13 @@ class BlockSys:
         # 变速装置
         self.changeable_speed = False
         self.reset_lock()
+        # 得分
+        self.score = 0
+        self.font = pygame.font.Font('res/font/SmileySans-Oblique-3.otf', 25)
+        # 下一个
+        self.next_block = None  
+        self.text_img = self.font.render("下一个: ", True, "#DDDDDD")
+        self.text_rect = self.text_img.get_rect(midleft=(GAME_WIDTH, SIZE[1] / 5))
 
     
     def update(self):
@@ -240,7 +245,21 @@ class BlockSys:
         # clicked
         for block, vect in self.clicked.items():
             surf.blit(block.image, vect * self.BS + pygame.Vector2(self.MARGIN_X + self.BORDER, self.MARGIN_Y + self.BORDER))
-        
+        # 分数
+        score_img = self.font.render(f'得分: {self.score}', True, "#DDDDDD")
+        score_rect = score_img.get_rect(midleft=(GAME_WIDTH, SIZE[1] * 3 / 4))
+        surf.blit(score_img, score_rect)
+        # 下一个
+        n_img = self.images[self.next_block]
+        top_left = pygame.Vector2(
+            (SIZE[0] + GAME_WIDTH) / 2,
+            self.text_rect.bottom + self.BS
+        )
+        for vect in self.create_block[self.next_block]():
+            vect.x -= self.COLUMN // 2 + 1
+            surf.blit(n_img, top_left + vect * self.BS)
+        # “下一个”文字
+        surf.blit(self.text_img, self.text_rect)
 
 
     def ckeck_full(self) -> list[int]:
@@ -268,6 +287,7 @@ class BlockSys:
 
     def kill_row(self, dead_row: list[int]):
         self.lock_row += len(dead_row)
+        self.score += len(dead_row)
         # 除旧
         for index in dead_row:
             self.map.pop(index)
@@ -278,10 +298,9 @@ class BlockSys:
 
 
     def add_clicked(self):
-        t = random.randint(0, 6)
         self.clicked = {
-            Block(self.images[t]): vect
-            for vect in self.create_block[t]()
+            Block(self.images[self.next_block]): vect
+            for vect in self.create_block[self.next_block]()
         }
         for vector in self.clicked.values():
             if self.map[int(vector.y)][int(vector.x)]:
@@ -289,6 +308,7 @@ class BlockSys:
                 return
         # 一段时间后下落
         pygame.time.set_timer(BLOCK_DOWN, self.down_cool, 1)
+        self.next_block = random.randint(0, 6)
 
 
     def reset(self):
@@ -300,13 +320,16 @@ class BlockSys:
         # 设置结局
         if qts == 0:
             pygame.time.set_timer(
-                pygame.event.Event(GAMESHIFT, {"state": "menu" ,"qst": qts}),
+                pygame.event.Event(GAMESHIFT, {"state": "menu"}),
                 5 * 60 * 1000, 1 
             )
         else:
             pygame.time.set_timer(
-                pygame.event.Event(GAMESHIFT, {"state": "result" ,"qst": qts}),
-                5 * 60 * 1000, 1 
+                pygame.event.Event(
+                    GAMESHIFT, 
+                    {"state": "result" ,"qst": qts, "get_score": self.get_score}
+                ),
+                5 * 60 * 1, 1 
             )
         # 设置速度
         if qts == 0:
@@ -323,6 +346,8 @@ class BlockSys:
             self.reset_lock()
         else:
             self.changeable_speed = False
+        self.score = 0
+        self.next_block = random.randint(0, 6)
         self.reset()
 
     
@@ -366,6 +391,10 @@ class BlockSys:
         self.lock_row = 0
 
 
+    def get_score(self):
+        return self.score
+
+
 # 基础game组件
 class Windows:
     def __init__(self) -> None:
@@ -386,7 +415,6 @@ class Windows:
                 pygame.quit()
                 sys.exit()
             self.update()
-            # pygame.event.clear()
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -408,11 +436,12 @@ class Game(Windows):
 
     def set_mode(self):
         if events := pygame.event.get(GAMESHIFT):
-            self.state = events[-1].state
+            event = events[-1]
+            self.state = event.state
             if self.state == 'game':
-                self.block_sys.start_game(events[-1].qst)
+                self.block_sys.start_game(event.qst)
             elif self.state == 'result':
-                self.result.start_result(events[-1].qst)
+                self.result.start_result(event.qst, event.get_score())
 
 
     def update(self):        
