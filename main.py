@@ -36,10 +36,8 @@ class Button:
         self.img = self.font.render(text, True, "#000000", "#DDDDDD")
         self.rect = self.img.get_rect(center=center)
         self.event = event
-
+        # 扩展的边界
         self.border_rect = self.rect.inflate(50, 20)
-
-        # pygame.event.post(self.event)
 
 
     def click(self, pos: tuple[int, int]) -> bool:
@@ -182,6 +180,7 @@ class BlockSys:
             self.COLUMN * self.BS + 2 * self.BORDER,
             self.ROW * self.BS + 2 * self.BORDER
         )
+        # 声音
         self.sound = pygame.mixer.Sound(r'res\sound\getScore.wav')
         self.sound.set_volume(0.5)
         # 变速装置
@@ -389,11 +388,11 @@ class BlockSys:
                 self.down_cool -= 100
                 self.reset_lock()
             elif self.lock_row < 4:
-                self.down_cool += 400
+                self.down_cool += 100
                 self.reset_lock()
         elif self.lock_row == 4:
             if self.lock_block < 30:
-                self.down_cool -= 400
+                self.down_cool -= 100
                 self.reset_lock()
 
 
