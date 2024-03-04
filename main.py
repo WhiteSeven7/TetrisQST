@@ -3,6 +3,7 @@ import sys
 import random
 from typing import Literal
 from pygame import Vector2
+from collections import deque
 
 
 State = Literal['game', 'menu', 'result']
@@ -149,7 +150,7 @@ class BlockSys:
 
 
     def __init__(self) -> None:
-        self.map: list[list[Block | None]] = []
+        self.map: deque[list[Block | None]] = deque()
         self.clicked: dict[Block, pygame.Vector2] = []
         # 下落冷却时间
         self.down_cool = 1000
@@ -300,9 +301,9 @@ class BlockSys:
         self.score += len(dead_row)
         # 除旧
         for index in dead_row:
-            self.map.pop(index)
+            del self.map[index]
         # 添新
-        self.map.extend([None] * self.COLUMN for _ in range(len(dead_row)))
+        self.map.extendleft([None] * self.COLUMN for _ in range(len(dead_row)))
         # 音效
         self.sound.play()
 
@@ -322,7 +323,7 @@ class BlockSys:
 
 
     def reset(self):
-        self.map = [[None] * self.COLUMN for _ in range(self.ROW)]
+        self.map = deque([None] * self.COLUMN for _ in range(self.ROW))
         self.add_clicked()
 
 
@@ -359,9 +360,6 @@ class BlockSys:
         self.score = 0
         self.next_block = random.randint(0, 6)
         self.reset()
-        
-        
-        self.score = 300
 
     
     def shift_clicked(self):
