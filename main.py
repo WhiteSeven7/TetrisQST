@@ -56,13 +56,13 @@ class Button:
 class Result:
     def __init__(self) -> None:
         # 每一张问卷的
-        self.qst_list = [
-            pygame.transform.scale(pygame.image.load(f"res/QTS/{i}.jpg"), (SIZE[1] * 0.64, SIZE[1])) for i in range(1, 4)
-        ]
-        self.rect_list = [
-            img.get_rect(center=(SIZE[0] / 2, SIZE[1] / 2))
-            for img in self.qst_list
-        ]
+        # self.qst_list = [
+        #     pygame.transform.scale(pygame.image.load(f"res/QTS/{i}.jpg"), (SIZE[1] * 0.64, SIZE[1])) for i in range(1, 4)
+        # ]
+        # self.rect_list = [
+        #     img.get_rect(center=(SIZE[0] / 2, SIZE[1] / 2))
+        #     for img in self.qst_list
+        # ]
         # 按钮
         self.back_button = Button(
             "点我返回",
@@ -83,15 +83,15 @@ class Result:
             self.back_button.click(event.pos)
         # 绘制
         surf = pygame.display.get_surface()
-        surf.blit(self.img, self.rect)
+        # surf.blit(self.img, self.rect)
         self.back_button.draw()
         # 显示得分
         surf.blit(self.score_img, self.score_rect)
 
 
     def start_result(self, qts: Qst, score_img: pygame.Surface):
-        self.img = self.qst_list[qts - 1]
-        self.rect = self.rect_list[qts - 1]
+        # self.img = self.qst_list[qts - 1]
+        # self.rect = self.rect_list[qts - 1]
         self.score_img = score_img
         self.score_rect = score_img.get_rect(
             midbottom=(self.back_button.border_rect.centerx, self.back_button.border_rect.top - 30)
@@ -331,7 +331,7 @@ class BlockSys:
         if qts == 0:
             pygame.time.set_timer(
                 pygame.event.Event(GAMESHIFT, {"state": "menu"}),
-                5 * 60 * 1000, 1 
+                5 * 60 * 1, 1 
             )
         else:
             pygame.time.set_timer(
@@ -339,7 +339,7 @@ class BlockSys:
                     GAMESHIFT, 
                     {"state": "result" ,"qst": qts, "get_score_img": self.get_score_img}
                 ),
-                5 * 60 * 1000, 1 
+                5 * 60 * 1, 1 
             )
         # 设置速度
         if qts == 0:
@@ -456,7 +456,7 @@ class Game(Windows):
 
     def update(self):
         if self.state == 'result':
-            self.surface.fill("#2D4CFF")
+            self.surface.fill("#2277A8")
         else: 
             self.surface.fill("#334d5c")
         if self.state == 'game':
